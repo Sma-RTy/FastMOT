@@ -6,11 +6,9 @@ import argparse
 import logging
 import json
 import cv2
-from camera_restserver import camrest
-import fastmot
 import fastmot.models
 from fastmot.utils import ConfigDecoder, Profiler
-
+import camera_restserver as camrest
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
@@ -34,6 +32,7 @@ def main():
                           help='URI to output video file')
     optional.add_argument('-t', '--txt', metavar="FILE",
                           help='path to output MOT Challenge format results (e.g. MOT20-01.txt)')
+    optional.add_argument('-m', '--mot', action='store_true', help='run multiple object tracker')
     optional.add_argument('-cip', '--cam_ip', action='store_true', help='ONVIF camera IP')
     optional.add_argument('-cusr', '--cam_usr', action='store_true', help='ONVIF camera user')
     optional.add_argument('-cpwd', '--cam_pwd', action='store_true', help='ONVIF camera password')
@@ -46,7 +45,7 @@ def main():
         raise parser.error('argument -t/--txt: not allowed without argument -m/--mot')
 
     # set up logging
-    logging.basicConfig(format='%(asctime)s [%(levelname)8s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    logging.basicConfig(format='%(asctime)s [%(levelname)8s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S', force=True)
     logger = logging.getLogger(fastmot.__name__)
     if args.quiet:
         logger.setLevel(logging.WARNING)
@@ -55,7 +54,7 @@ def main():
     else:
         logger.setLevel(logging.INFO)
 
-    if args.cip and args.cam_usr and args.cam_pwd:
+    if args.cam_ip and args.cam_usr and args.cam_pwd:
         t = threading.Thread(target=camrest.CameraControl('positions.json', args.cam_ip, args.cam_usr, args.cam_pwd).Run)
         t.start()
     else:

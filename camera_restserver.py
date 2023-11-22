@@ -4,6 +4,9 @@ from flask import request
 from waitress import serve
 from sensecam_control import onvif_control
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 class CameraControl:
 
