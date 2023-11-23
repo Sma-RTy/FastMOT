@@ -9,13 +9,22 @@ import cv2
 import fastmot.models
 from fastmot.utils import ConfigDecoder, Profiler
 import camera_restserver as camrest
+from kubernetes import client as clientk8
+from kubernetes import config as configk8
+
+podname_stream_rtsp = os.getenv('POD_STREAM_IN')
+stream_port = os.getenv('STREAM_PORT')
+stream_name = os.getenv('STREAM_NAME')
+cam_ip = os.getenv('CAMERA_IP')
+cam_usr = os.getenv('ONVIF_USER')
+cam_pwd = os.getenv('ONVIF_PWD')
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
     optional = parser._action_groups.pop()
     required = parser.add_argument_group('required arguments')
     group = parser.add_mutually_exclusive_group()
-    required.add_argument('-i', '--input-uri', metavar="URI", required=True, help=
+    optional.add_argument('-i', '--input-uri', metavar="URI", required=True, help=
                           'URI to input stream\n'
                           '1) image sequence (e.g. %%06d.jpg)\n'
                           '2) video file (e.g. file.mp4)\n'
@@ -33,9 +42,6 @@ def main():
     optional.add_argument('-t', '--txt', metavar="FILE",
                           help='path to output MOT Challenge format results (e.g. MOT20-01.txt)')
     optional.add_argument('-m', '--mot', action='store_true', help='run multiple object tracker')
-    optional.add_argument('-cip', '--cam_ip', action='store_true', help='ONVIF camera IP')
-    optional.add_argument('-cusr', '--cam_usr', action='store_true', help='ONVIF camera user')
-    optional.add_argument('-cpwd', '--cam_pwd', action='store_true', help='ONVIF camera password')
     optional.add_argument('-s', '--show', action='store_true', help='show visualizations')
     group.add_argument('-q', '--quiet', action='store_true', help='reduce output verbosity')
     group.add_argument('-v', '--verbose', action='store_true', help='increase output verbosity')
@@ -54,11 +60,27 @@ def main():
     else:
         logger.setLevel(logging.INFO)
 
-    if args.cam_ip and args.cam_usr and args.cam_pwd:
-        t = threading.Thread(target=camrest.CameraControl('positions.json', args.cam_ip, args.cam_usr, args.cam_pwd).Run)
+    # set up ONVIF camera rest server
+    if cam_ip and cam_usr and cam_pwd:
+        t = threading.Thread(target=camrest.CameraControl('positions.json', cam_ip, cam_usr, cam_pwd).Run)
         t.start()
     else:
         logger.info ("Camera informations must be passed as arguments. ONVIF control disabled.")
+
+    # set up kubernetes
+    find_rtsp_stream = 0
+    configk8.load_incluster_config()
+
+    v1 = clientk8.CoreV1Api()
+    ret = v1.list_pod_for_all_namespaces(watch=False)
+    for i in ret.items:
+        if (podname_stream_in in i.metadata.name):
+            if i.status.pod_ip:
+                stream_ip = i.status.pod_ip
+                find_rtsp_stream = 1
+    if not find_rtsp_stream:
+        logger.error ("RSTP Server Pod is not running or Pod IP is None, exiting...")
+        exit()
 
     # load config file
     with open(args.config) as cfg_file:
@@ -70,12 +92,22 @@ def main():
             label_map = label_file.read().splitlines()
             fastmot.models.set_label_map(label_map)
 
-    stream = fastmot.VideoIO(config.resize_to, args.input_uri, args.output_uri, **vars(config.stream_cfg))
+    if args.output_uri is not None:
+        video_out = args.output_uri
+    else:
+        video_out = "rtsp://" + stream_ip + ":" + stream_port + "/feed_tr"
+
+    if args.input_uri is not None:
+        video_input = args.input_uri
+    else:
+        video_input = "rtsp://" + stream_ip + ":" + stream_port + "/" + stream_name
+
+    stream = fastmot.VideoIO(config.resize_to, video_input, video_out, **vars(config.stream_cfg))
 
     mot = None
     txt = None
     if args.mot:
-        draw = args.show or args.output_uri is not None
+        draw = args.show or video_out is not None
         mot = fastmot.MOT(config.resize_to, **vars(config.mot_cfg), draw=draw)
         mot.reset(stream.cap_dt)
     if args.txt is not None:
@@ -107,7 +139,7 @@ def main():
                     cv2.imshow('Video', frame)
                     if cv2.waitKey(1) & 0xFF == 27:
                         break
-                if args.output_uri is not None:
+                if video_out is not None:
                     stream.write(frame)
     finally:
         # clean up resources
