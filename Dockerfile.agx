@@ -7,7 +7,7 @@ ENV LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libgomp.so.1:/usr/lib/aarch64-linux-gn
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get upgrade --yes && \
     DEBIAN_FRONTEND=noninteractive apt-get install --yes \
-    wget unzip tzdata git nano \
+    wget unzip tzdata git nano ffmpeg \
     build-essential cmake pkg-config \
     libgtk-3-dev libcanberra-gtk3-module \
     libjpeg-dev libpng-dev libtiff-dev \
@@ -33,7 +33,7 @@ RUN python3 -m pip install --upgrade pip
 RUN pip3 install --extra-index-url https://developer.download.nvidia.com/compute/redist/jp/v511 tensorflow==2.12.0+nv23.05
 RUN python3 -m pip install numba cupy-cuda11x sensecam-control flask waitress
 
-#RUN cp -r /usr/local/lib/python3.8/site-packages/wsdl /usr/local/lib/python3.8/dist-packages/
+RUN cp -r /usr/local/lib/python3.8/site-packages/wsdl /usr/local/lib/python3.8/dist-packages/
 
 RUN git clone https://github.com/GeekAlexis/FastMOT.git /fastmot
 WORKDIR /fastmot/fastmot/plugins/
@@ -41,5 +41,4 @@ RUN make
 WORKDIR /fastmot
 RUN ./scripts/download_models.sh
 
-#python3 app.py --input-uri /obj_track/data/video/test.mp4 --output-uri ./out.avi --mot
-ENTRYPOINT ["tail", "-f", "/dev/null"]
+ENTRYPOINT ["python3", "app.py", "--input-uri", "test.mp4", "--output", "demo.avi", "--mot"]
