@@ -74,7 +74,7 @@ def main():
     v1 = clientk8.CoreV1Api()
     ret = v1.list_pod_for_all_namespaces(watch=False)
     for i in ret.items:
-        if (podname_stream_in in i.metadata.name):
+        if (podname_stream_rtsp in i.metadata.name):
             if i.status.pod_ip:
                 stream_ip = i.status.pod_ip
                 find_rtsp_stream = 1
