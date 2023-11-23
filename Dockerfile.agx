@@ -31,7 +31,7 @@ ENV NO_AT_BRIDGE=1
 
 RUN python3 -m pip install --upgrade pip
 RUN pip3 install --extra-index-url https://developer.download.nvidia.com/compute/redist/jp/v511 tensorflow==2.12.0+nv23.05
-RUN python3 -m pip install numba cupy-cuda11x sensecam-control flask waitress
+RUN python3 -m pip install numba cupy-cuda11x sensecam-control flask waitress kubernetes
 
 RUN cp -r /usr/local/lib/python3.8/site-packages/wsdl /usr/local/lib/python3.8/dist-packages/
 
