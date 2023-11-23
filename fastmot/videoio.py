@@ -67,6 +67,12 @@ class VideoIO:
         assert proc_fps > 0
         self.proc_fps = proc_fps
 
+        if self.output_uri is not None:
+            if "rtsp" in self.output_uri:
+                self.rtsp = True
+            else:
+                self.rtsp = False
+
         self.protocol = self._parse_uri(self.input_uri)
         self.is_live = self.protocol != Protocol.IMAGE and self.protocol != Protocol.VIDEO
         if WITH_GSTREAMER:
@@ -93,14 +99,17 @@ class VideoIO:
         LOGGER.info('%dx%d stream @ %d FPS', width, height, self.cap_fps)
 
         if self.output_uri is not None:
-            Path(self.output_uri).parent.mkdir(parents=True, exist_ok=True)
-            output_fps = 1 / self.cap_dt
-            if WITH_GSTREAMER:
-                self.writer = cv2.VideoWriter(self._gst_write_pipeline(), cv2.CAP_GSTREAMER, 0,
-                                              output_fps, self.size, True)
+            if self.rtsp:
+                self.writer = self._rtsp_stream_ffmpeg(int(width), int(height), self.cap_fps, self.output_uri)
             else:
-                fourcc = cv2.VideoWriter_fourcc(*'avc1')
-                self.writer = cv2.VideoWriter(self.output_uri, fourcc, output_fps, self.size, True)
+                Path(self.output_uri).parent.mkdir(parents=True, exist_ok=True)
+                output_fps = 1 / self.cap_dt
+                if WITH_GSTREAMER:
+                    self.writer = cv2.VideoWriter(self._gst_write_pipeline(), cv2.CAP_GSTREAMER, 0,
+                                              output_fps, self.size, True)
+                else:
+                    fourcc = cv2.VideoWriter_fourcc(*'avc1')
+                    self.writer = cv2.VideoWriter(self.output_uri, fourcc, output_fps, self.size, True)
 
     @property
     def cap_dt(self):
@@ -144,7 +153,11 @@ class VideoIO:
     def write(self, frame):
         """Writes the next video frame."""
         assert hasattr(self, 'writer')
-        self.writer.write(frame)
+        if self.rtsp:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            self.writer.stdin.write(frame)
+        else:
+            self.writer.write(frame)
 
     def release(self):
         """Cleans up input and output sources."""
@@ -218,6 +231,15 @@ class VideoIO:
         elif self.protocol == Protocol.HTTP:
             pipeline = 'souphttpsrc location=%s is-live=true ! decodebin ! ' % self.input_uri
         return pipeline + cvt_pipeline
+
+    def _rtsp_stream_ffmpeg(self, w, h, fps, rtsp_out):
+        args = (
+            f"ffmpeg -stream_loop -1 -f rawvideo -pix_fmt "
+            f"rgb24 -s {w}x{h} -r {fps} -i pipe:0 -pix_fmt yuv420p -b:v 1000K "
+            f"-f rtsp -rtsp_transport tcp {rtsp_out}"
+        ).split()
+        return subprocess.Popen(args, stdin=subprocess.PIPE)
+
 
     def _gst_write_pipeline(self):
         gst_elements = str(subprocess.check_output('gst-inspect-1.0'))
