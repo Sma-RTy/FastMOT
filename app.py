@@ -6,9 +6,11 @@ import argparse
 import logging
 import json
 import cv2
+import os
 import fastmot.models
 from fastmot.utils import ConfigDecoder, Profiler
 import camera_restserver as camrest
+import threading
 from kubernetes import client as clientk8
 from kubernetes import config as configk8
 
@@ -24,7 +26,7 @@ def main():
     optional = parser._action_groups.pop()
     required = parser.add_argument_group('required arguments')
     group = parser.add_mutually_exclusive_group()
-    optional.add_argument('-i', '--input-uri', metavar="URI", required=True, help=
+    optional.add_argument('-i', '--input-uri', metavar="URI", help=
                           'URI to input stream\n'
                           '1) image sequence (e.g. %%06d.jpg)\n'
                           '2) video file (e.g. file.mp4)\n'

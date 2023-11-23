@@ -35,7 +35,7 @@ RUN python3 -m pip install numba cupy-cuda11x sensecam-control flask waitress ku
 
 RUN cp -r /usr/local/lib/python3.8/site-packages/wsdl /usr/local/lib/python3.8/dist-packages/
 
-RUN git clone https://github.com/GeekAlexis/FastMOT.git /fastmot
+RUN git clone https://github.com/Sma-RTy/FastMOT.git -b k8_integration /fastmot
 WORKDIR /fastmot/fastmot/plugins/
 RUN make
 WORKDIR /fastmot
