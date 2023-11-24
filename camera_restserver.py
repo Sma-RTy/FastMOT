@@ -36,9 +36,9 @@ class CameraControl:
         return resp
 
     def SoundNotification(self):
-        resp = Response("Text %s received\n" % image_text)
-        resp.status = 200
         data = json.loads(request.data)
+        resp = Response("Sound notification: %s\n" % data['text'])
+        resp.status = 200
         self.image_text = data['text']
         return resp
 

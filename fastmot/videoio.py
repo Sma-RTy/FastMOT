@@ -6,7 +6,7 @@ import subprocess
 import threading
 import logging
 import cv2
-
+import numpy as np
 
 LOGGER = logging.getLogger(__name__)
 WITH_GSTREAMER = True
@@ -158,7 +158,7 @@ class VideoIO:
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
         if self.rtsp:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            self.writer.stdin.write(frame)
+            self.writer.stdin.write(frame.astype(np.uint8).tobytes())
         else:
             self.writer.write(frame)
 
@@ -241,7 +241,7 @@ class VideoIO:
             f"rgb24 -s {w}x{h} -r {fps} -i pipe:0 -pix_fmt yuv420p -b:v 1000K "
             f"-f rtsp -rtsp_transport tcp {rtsp_out}"
         ).split()
-        return subprocess.Popen(args, stdin=subprocess.PIPE)
+        return subprocess.Popen(args, stdin=subprocess.PIPE, shell=False)
 
 
     def _gst_write_pipeline(self):
