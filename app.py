@@ -13,6 +13,7 @@ import camera_restserver as camrest
 import threading
 from kubernetes import client as clientk8
 from kubernetes import config as configk8
+import time
 
 podname_stream_rtsp = os.getenv('POD_STREAM_IN')
 stream_port = os.getenv('STREAM_PORT')
@@ -104,6 +105,7 @@ def main():
     else:
         video_input = "rtsp://" + stream_ip + ":" + stream_port + "/" + stream_name
 
+    time.sleep(15)
     stream = fastmot.VideoIO(config.resize_to, video_input, video_out, **vars(config.stream_cfg))
 
     mot = None
