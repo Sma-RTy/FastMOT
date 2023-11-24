@@ -150,9 +150,12 @@ class VideoIO:
             frame = cv2.resize(frame, self.size)
         return frame
 
-    def write(self, frame):
+    def write(self, frame, text):
         """Writes the next video frame."""
         assert hasattr(self, 'writer')
+        if text:
+            cv2.putText(frame, f'Sound Notification: {text}', (30, int(self.source.get(cv2.CAP_PROP_FRAME_HEIGHT)) - 50),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
         if self.rtsp:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             self.writer.stdin.write(frame)

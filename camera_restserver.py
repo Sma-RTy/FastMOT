@@ -11,10 +11,12 @@ class CameraControl:
         self.app = Flask(__name__)
         self.app.add_url_rule('/set_position', 'set_position', self.SetPosition, methods=['POST'])
         self.app.add_url_rule('/go_home', 'go_home', self.GoHome, methods=['POST'])
+        self.app.add_url_rule('/sound_notification', 'sound_notification', self.SoundNotification, methods=['POST'])
         self.camcontrol = onvif_control.CameraControl(ip, login, password)
         self.camcontrol.camera_start()
         self.camcontrol.go_home_position()
         self.camera_positions = json.load(open(position_file))
+        self.image_text = ""
 
     def SetPosition(self):
       data = json.loads(request.data)
@@ -31,6 +33,13 @@ class CameraControl:
         resp = Response("Set Camera to Home position\n")
         resp.status = 200
         self.camcontrol.go_home_position()
+        return resp
+
+    def SoundNotification(self):
+        resp = Response("Text %s received\n" % image_text)
+        resp.status = 200
+        data = json.loads(request.data)
+        self.image_text = data['text']
         return resp
 
     def Run(self):

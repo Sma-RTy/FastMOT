@@ -54,7 +54,7 @@ def main():
         raise parser.error('argument -t/--txt: not allowed without argument -m/--mot')
 
     # set up logging
-    logging.basicConfig(format='%(asctime)s [%(levelname)8s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S', force=True)
+    logging.basicConfig(format='%(asctime)s [%(levelname)8s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     logger = logging.getLogger(fastmot.__name__)
     if args.quiet:
         logger.setLevel(logging.WARNING)
@@ -65,7 +65,8 @@ def main():
 
     # set up ONVIF camera rest server
     if cam_ip and cam_usr and cam_pwd:
-        t = threading.Thread(target=camrest.CameraControl('positions.json', cam_ip, cam_usr, cam_pwd).Run)
+        cam_interface = camrest.CameraControl('positions.json', cam_ip, cam_usr, cam_pwd)
+        t = threading.Thread(target=cam_interface.Run)
         t.start()
     else:
         logger.info ("Camera informations must be passed as arguments. ONVIF control disabled.")
@@ -144,7 +145,7 @@ def main():
                     if cv2.waitKey(1) & 0xFF == 27:
                         break
                 if video_out is not None:
-                    stream.write(frame)
+                    stream.write(frame, cam_interface.image_text)
     finally:
         # clean up resources
         if txt is not None:
